@@ -5,21 +5,22 @@ echo "#                     Waenara / SCPSL-Egg                     #"
 echo "#   Pterodactyl egg for simplified SCP:SL server management   #"
 echo "###############################################################"
 
-# Рабочая директория — корень сервера (куда Pterodactyl монтирует файлы)
+# Рабочая директория — корень сервера
 cd /home/container || exit 1
 
-# 1. Скачиваем SteamCMD во временную папку
+# 1. Скачиваем SteamCMD
 echo "Downloading SteamCMD..."
 mkdir -p /home/container/steamcmd
 cd /home/container/steamcmd
 curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
 chmod +x steamcmd.sh
 
-# 2. Скачиваем SCP:SL Dedicated Server
+# 2. Скачиваем SCP:SL Dedicated Server (С ФИКСОМ ДЛЯ ПЕРВОГО ЗАПУСКА)
 echo "Downloading SCP:SL Server..."
-./steamcmd.sh +force_install_dir /home/container +login anonymous +app_update 996560 -beta "$BETA_NAME" $( [ "$BETA_PASSWORD" != "none" ] && echo "-betapassword $BETA_PASSWORD" ) validate +quit
+# +app_info_print 996560 — прогревает кэш SteamCMD, чтобы не было ошибки Missing configuration
+./steamcmd.sh +force_install_dir /home/container +login anonymous +app_info_print 996560 +app_update 996560 -beta "$BETA_NAME" $( [ "$BETA_PASSWORD" != "none" ] && echo "-betapassword $BETA_PASSWORD" ) validate +quit
 
-# 3. Убираем временные файлы SteamCMD после установки
+# 3. Убираем временные файлы SteamCMD
 cd /home/container
 rm -rf steamcmd
 
