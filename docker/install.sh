@@ -2,13 +2,12 @@
 
 echo "###############################################################"
 echo "#                     Waenara / SCPSL-Egg                     #"
-echo "#   Pterodactyl egg for simplified SCP:SL server management   #"
 echo "###############################################################"
 
 # Переходим в папку, которая монтируется на диск (видна в панели)
 cd /mnt/server || exit 1
 
-# 1. Скачиваем SteamCMD во временную папку /tmp (чтобы не мусорить)
+# 1. Скачиваем SteamCMD во временную папку /tmp
 echo "Downloading SteamCMD..."
 mkdir -p /tmp/steamcmd
 cd /tmp/steamcmd
@@ -17,7 +16,6 @@ chmod +x steamcmd.sh
 
 # 2. Скачиваем SCP:SL Dedicated Server СРАЗУ в /mnt/server
 echo "Downloading SCP:SL Server..."
-# +app_info_print 996560 — прогревает кэш SteamCMD для первого запуска
 ./steamcmd.sh +force_install_dir /mnt/server +login anonymous +app_info_print 996560 +app_update 996560 -beta "$BETA_NAME" $( [ "$BETA_PASSWORD" != "none" ] && echo "-betapassword $BETA_PASSWORD" ) validate +quit
 
 # 3. Убираем временные файлы SteamCMD
