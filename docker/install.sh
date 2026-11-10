@@ -2,6 +2,7 @@
 
 echo "###############################################################"
 echo "#                     Waenara / SCPSL-Egg                     #"
+echo "#   Pterodactyl egg for simplified SCP:SL server management   #"
 echo "###############################################################"
 
 # Переходим в папку, которая монтируется на диск (видна в панели)
@@ -58,6 +59,12 @@ if [ "$SCPDISCORD_INSTALLATION" -eq 1 ]; then
 else
     rm -f "/mnt/server/.config/SCP Secret Laboratory/LabAPI/plugins/global/SCPDiscord.dll"
 fi
+
+# 6. КРИТИЧЕСКИ ВАЖНО: Выставляем права и владельца для контейнера
+echo "Setting permissions for Pterodactyl container..."
+chown -R container:container /mnt/server 2>/dev/null || chown -R 1000:1000 /mnt/server
+chmod +x /mnt/server/LocalAdmin
+chmod +x /mnt/server/SCPSL_x86_64 2>/dev/null
 
 echo "###############################################################"
 echo "#                   Installation completed!                   #"
