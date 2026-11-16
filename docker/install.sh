@@ -8,7 +8,7 @@ echo "###############################################################"
 
 cd /mnt/server || exit 1
 
-# Запоминаем реального владельца папки тома (pterodactyl на ноде)
+# Запоминаем реального владельца тома (pterodactyl на ноде)
 OWNER_UGID=$(stat -c '%u:%g' /mnt/server 2>/dev/null || echo "1000:1000")
 
 # 1. Скачиваем и предварительно обновляем SteamCMD во временную папку /tmp
@@ -19,27 +19,48 @@ cd /tmp/steamcmd
 curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxf -
 chmod +x steamcmd.sh
 
-# Первый холостой запуск, чтобы steamcmd обновился сам до скачивания игры
+# Холостой запуск, чтобы steamcmd обновился до скачивания игры
 ./steamcmd.sh +quit || true
 
-# 2. Скачиваем SCP:SL Dedicated Server в /mnt/server
-echo "Downloading SCP:SL Server..."
-BETA_NAME=${BETA_NAME:-public}
+# 2. Формируем аргументы ветки (для public флаг -beta не нужен)
 BETA_ARGS=""
-if [ -n "$BETA_PASSWORD" ] && [ "$BETA_PASSWORD" != "none" ]; then
-    BETA_ARGS="-betapassword $BETA_PASSWORD"
+if [ -n "$BETA_NAME" ] && [ "$BETA_NAME" != "public" ]; then
+    BETA_ARGS="-beta $BETA_NAME"
+    if [ -n "$BETA_PASSWORD" ] && [ "$BETA_PASSWORD" != "none" ]; then
+        BETA_ARGS="$BETA_ARGS -betapassword $BETA_PASSWORD"
+    fi
 fi
 
-./steamcmd.sh \
-    +force_install_dir /mnt/server \
-    +login anonymous \
-    +app_update 996560 -beta "$BETA_NAME" $BETA_ARGS validate \
-    +quit
+# 3. Скачиваем SCP:SL Dedicated Server (до 3 попыток из-за бага Missing configuration)
+echo "Downloading SCP:SL Server..."
+INSTALLED=0
+for i in 1 2 3; do
+    echo "SteamCMD attempt $i/3..."
+    if ./steamcmd.sh \
+        +@sSteamCmdForcePlatformType linux \
+        +force_install_dir /mnt/server \
+        +login anonymous \
+        +app_info_update 1 \
+        +app_update 996560 $BETA_ARGS validate \
+        +quit; then
+        if [ -f "/mnt/server/LocalAdmin" ]; then
+            INSTALLED=1
+            break
+        fi
+    fi
+    echo "Attempt $i failed, retrying in 5 seconds..."
+    sleep 5
+done
 
-# 3. Убираем временные файлы SteamCMD
+if [ "$INSTALLED" -ne 1 ]; then
+    echo "ERROR: SteamCMD failed to install SCP:SL Server after 3 attempts!"
+    exit 1
+fi
+
+# 4. Убираем временные файлы SteamCMD
 rm -rf /tmp/steamcmd
 
-# 4. Установка Exiled (если включено)
+# 5. Установка Exiled (если включено)
 if [ "${EXILED_INSTALLATION:-0}" -ne 0 ]; then
     echo "Installing Exiled..."
     rm -rf /tmp/exiled
@@ -51,7 +72,7 @@ if [ "${EXILED_INSTALLATION:-0}" -ne 0 ]; then
     rm -rf /tmp/exiled
 fi
 
-# 5. Установка Discord-бота (если включено)
+# 6. Установка Discord-бота (если включено)
 if [ "${SCPDISCORD_INSTALLATION:-0}" -eq 1 ]; then
     echo "Installing SCPDiscord..."
     rm -rf /tmp/scpdiscord
@@ -77,7 +98,7 @@ else
     rm -f "/mnt/server/.config/SCP Secret Laboratory/LabAPI/plugins/global/SCPDiscord.dll"
 fi
 
-# 6. Выставляем права на реального владельца тома и делаем бинарники исполняемыми
+# 7. Выставляем права и делаем бинарники исполняемыми
 echo "Setting permissions (${OWNER_UGID})..."
 chmod +x /mnt/server/LocalAdmin
 chmod +x /mnt/server/SCPSL.x86_64 2>/dev/null || true
