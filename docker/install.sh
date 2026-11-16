@@ -8,7 +8,6 @@ echo "###############################################################"
 
 cd /mnt/server || exit 1
 
-# Запоминаем реального владельца тома (pterodactyl на ноде)
 OWNER_UGID=$(stat -c '%u:%g' /mnt/server 2>/dev/null || echo "1000:1000")
 
 # 1. Скачиваем и предварительно обновляем SteamCMD во временную папку /tmp
@@ -19,10 +18,10 @@ cd /tmp/steamcmd
 curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxf -
 chmod +x steamcmd.sh
 
-# Холостой запуск, чтобы steamcmd обновился до скачивания игры
+# Первый холостой запуск, чтобы steamcmd обновился до скачивания игры
 ./steamcmd.sh +quit || true
 
-# 2. Формируем аргументы ветки (для public флаг -beta не нужен)
+# 2. Аргументы ветки (для public флаг -beta не передаём)
 BETA_ARGS=""
 if [ -n "$BETA_NAME" ] && [ "$BETA_NAME" != "public" ]; then
     BETA_ARGS="-beta $BETA_NAME"
@@ -31,7 +30,7 @@ if [ -n "$BETA_NAME" ] && [ "$BETA_NAME" != "public" ]; then
     fi
 fi
 
-# 3. Скачиваем SCP:SL Dedicated Server (до 3 попыток из-за бага Missing configuration)
+# 3. Скачиваем SCP:SL Dedicated Server в /mnt/server (до 3 попыток)
 echo "Downloading SCP:SL Server..."
 INSTALLED=0
 for i in 1 2 3; do
@@ -41,6 +40,7 @@ for i in 1 2 3; do
         +force_install_dir /mnt/server \
         +login anonymous \
         +app_info_update 1 \
+        +app_info_print 996560 \
         +app_update 996560 $BETA_ARGS validate \
         +quit; then
         if [ -f "/mnt/server/LocalAdmin" ]; then
@@ -57,10 +57,9 @@ if [ "$INSTALLED" -ne 1 ]; then
     exit 1
 fi
 
-# 4. Убираем временные файлы SteamCMD
 rm -rf /tmp/steamcmd
 
-# 5. Установка Exiled (если включено)
+# 4. Установка Exiled (если включено)
 if [ "${EXILED_INSTALLATION:-0}" -ne 0 ]; then
     echo "Installing Exiled..."
     rm -rf /tmp/exiled
@@ -72,7 +71,7 @@ if [ "${EXILED_INSTALLATION:-0}" -ne 0 ]; then
     rm -rf /tmp/exiled
 fi
 
-# 6. Установка Discord-бота (если включено)
+# 5. Установка Discord-бота (если включено)
 if [ "${SCPDISCORD_INSTALLATION:-0}" -eq 1 ]; then
     echo "Installing SCPDiscord..."
     rm -rf /tmp/scpdiscord
@@ -98,7 +97,7 @@ else
     rm -f "/mnt/server/.config/SCP Secret Laboratory/LabAPI/plugins/global/SCPDiscord.dll"
 fi
 
-# 7. Выставляем права и делаем бинарники исполняемыми
+# 6. Выставляем права на реального владельца тома и бинарники
 echo "Setting permissions (${OWNER_UGID})..."
 chmod +x /mnt/server/LocalAdmin
 chmod +x /mnt/server/SCPSL.x86_64 2>/dev/null || true
